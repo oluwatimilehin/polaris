@@ -244,6 +244,24 @@ def compare_scores(
     return result
 
 
+def calculate_geomean(column_header: str, comparison: list[dict[str, Any]]) -> tuple[float, int] | None:
+        # Extract valid ratio scores (positive, non-None values)
+    ratios = [
+        row[column_header]
+        for row in comparison
+        if row[column_header] is not None and row[column_header] > 0
+    ]
+
+    if not ratios:
+        return None
+
+    # Calculate geometric mean: (product of all values)^(1/n)
+    # Using log space for numerical stability: exp(mean(log(values)))
+    geomean_ratio = math.exp(sum(math.log(x) for x in ratios) / len(ratios))
+    logger.info('Geometric mean of {}: {:.4f} (based on {} valid ratios)', column_header, geomean_ratio, len(ratios))
+    
+    return geomean_ratio, len(ratios)
+
 def calculate_and_save_geomean(comparison: list[dict[str, Any]], output_path: Path) -> float | None:
     """
     Calculate geometric mean of correlation ratios and save to JSON.
@@ -281,29 +299,41 @@ def calculate_and_save_geomean(comparison: list[dict[str, Any]], output_path: Pa
         Migrated from tools.run_ttsi_corr.calculate_and_save_geomean() in Phase 6.
     """
     # Extract valid ratio scores (positive, non-None values)
-    ratio_scores = [
+    si_target_ratio_scores = [
         row['Ratio-HLM-to-SiTarget']
         for row in comparison
         if row['Ratio-HLM-to-SiTarget'] is not None and row['Ratio-HLM-to-SiTarget'] > 0
     ]
 
-    if not ratio_scores:
+    if not si_target_ratio_scores:
         logger.warning('No valid Ratio-HLM-to-SiTarget values found for geometric mean calculation')
         return None
 
     # Calculate geometric mean: (product of all values)^(1/n)
     # Using log space for numerical stability: exp(mean(log(values)))
-    geomean_ratio = math.exp(sum(math.log(x) for x in ratio_scores) / len(ratio_scores))
+    geomean_ratio = math.exp(sum(math.log(x) for x in si_target_ratio_scores) / len(si_target_ratio_scores))
     logger.info(
         'Geometric mean of Ratio-HLM-to-SiTarget: {:.4f} (based on {} valid ratios)',
         geomean_ratio,
-        len(ratio_scores)
+        len(si_target_ratio_scores)
     )
+    
+    geomean_ratio_to_sitarget = calculate_geomean('Ratio-HLM-to-SiTarget', comparison)
+    if not geomean_ratio_to_sitarget:
+        logger.warning(f'No valid Ratio-HLM-to-SiTarget values found for geometric mean calculation')
+        return None
+    
+    geomean_ratio_to_siscore = calculate_geomean('Ratio-HLM-to-Si', comparison)
+    if not geomean_ratio_to_siscore:
+        logger.warning(f'No valid Ratio-HLM-to-Si values found for geometric mean calculation')
+        return None
 
     # Prepare data for JSON output
     geomean_data = {
-        'geomean_ratio_hlm_to_sitarget': geomean_ratio,
-        'num_valid_ratios': len(ratio_scores),
+        'geomean_ratio_hlm_to_sitarget': geomean_ratio_to_sitarget[0],
+        'num_valid_ratios_for_sitarget': geomean_ratio_to_sitarget[1],
+        'geomean_ratio_hlm_to_siscore': geomean_ratio_to_siscore[0],
+        'num_valid_ratios_for_siscore': geomean_ratio_to_siscore[1],
         'total_comparisons': len(comparison)
     }
 
