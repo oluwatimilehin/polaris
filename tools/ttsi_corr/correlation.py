@@ -101,6 +101,8 @@ def read_scores(filepath: Path, default_precision: str | None) -> ScoreDict:
             actual_scores[actual_key] = {
                 'ideal projection': actual_res['ideal_throughput'],
                 'projection': actual_res['perf_projection'],
+                "batch_size": actual_res['bs'],
+                "freq_Mhz": actual_res["freq_Mhz"],
                 'precision': default_precision,  # type: ignore[dict-item]
                 'ttft_ms': actual_res.get('ttft_ms'),
                 'archname': actual_res.get('archname', 'Unknown'),
@@ -205,6 +207,14 @@ def compare_scores(
             instance_value: int | str = int(instance_str.strip('b'))
         except (ValueError, AttributeError):
             instance_value = instance_str  # Fallback to original if conversion fails
+        
+        batch_size = actual_scores[key]['batch_size']
+        dev_freq_mhz = actual_scores[key]["freq_Mhz"]
+        
+        ref_num_cycles = math.ceil((batch_size / ref_score) * dev_freq_mhz * 1e6)
+        actual_num_cycles = math.ceil((batch_size / projected_score) * dev_freq_mhz * 1e6)
+        
+        abs_percentage_error = abs(ref_num_cycles - actual_num_cycles) * 100 / ref_num_cycles
 
         row_data: dict[str, Any] = {
             'Workload': key[0],
@@ -237,6 +247,9 @@ def compare_scores(
             'HLM-Ideal-Score': projected_ideal_score,
             'Ratio-HLM-to-Si': ratio_hlm_to_si,
             'Ratio-HLM-to-SiTarget': ratio_hlm_to_target,
+            'HLM-Num-Cycles': actual_num_cycles,
+            'Si-Actual-Num-Cycles': ref_num_cycles,
+            'Absolute Percentage Error': abs_percentage_error
         })
 
         result.append(row_data)

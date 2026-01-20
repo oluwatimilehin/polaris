@@ -245,6 +245,7 @@ def run_polaris_simulation(
         'wlmapspec': wlmapspec,
         'filterarch': ','.join(uniq_devs),
         'dump_stats_csv': True,
+        'instr_profile': True,
     }
 
     runcfg_file_path = opath / tensix_runcfg_file
