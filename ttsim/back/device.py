@@ -246,7 +246,7 @@ class Device:
             mem_cycles       = mem_rd_cycles + mem_wr_cycles
             ramp_penalty     = self.simconfig_obj.ramp_penalty()
             dev_freq_MHz     = self.simconfig_obj.frequency(op.uses_compute_pipe, units='MHz')
-            ideal_cycles     = max(compute_cycles, mem_cycles) + ramp_penalty
+            ideal_cycles     = max(compute_cycles, mem_cycles) + ramp_penalty # lower bound of performance. 
             ideal_msecs      = ideal_cycles / dev_freq_MHz / 1e3
             cycles           = math.ceil((1 + self.G_GUARDBAND) * ideal_cycles)
             msecs            = cycles / dev_freq_MHz / 1e3
@@ -381,11 +381,11 @@ class Device:
         fits_device      = tot_mem_size_GB <= device_mem_GB
 
         #total perf metrics
-        tot_ideal_throughput = bs * 1000 / tot_ideal_msecs
+        tot_ideal_throughput = bs * 1000 / tot_ideal_msecs # a thousand ms in one second. 
         tot_msecs            = (1 + self.G_GUARDBAND) * tot_ideal_msecs
         tot_throughput       = bs * 1000 / tot_msecs
         tot_cycles           = math.ceil((1 + self.G_GUARDBAND) * tot_ideal_cycles)
-
+        
         summary_stats = {
                 'inParams'              : tot_inParamCount,
                 'inActs'                : tot_inActCount,
